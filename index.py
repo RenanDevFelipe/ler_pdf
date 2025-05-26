@@ -26,7 +26,7 @@ class PDFExportador:
             "Matrícula", "Nome", "CPF", "Banco/Agência", "Conta Corrente",
             "Data Aposentadoria", "Total Rendimentos", "Total Descontos",
             "Depósito FGTS", "Total Líquido", "Margem Consignável 30%", 
-            "Margem Consignável 70%", "Bancos Desconto", "Parcelas Desconto", "Valores Desconto"
+            "Margem Consignável 70%", "Descontos Bancários"
         ]
 
         self.campos_selecionados = {campo: tk.BooleanVar(value=True) for campo in self.campos_disponiveis}
@@ -157,9 +157,9 @@ class PDFExportador:
 
         descontos_bancarios = self.extrair_descontos_bancarios(linhas)
 
-        bancos = "; ".join([d['Banco'] for d in descontos_bancarios])
-        parcelas = "; ".join([d['Parcela'] for d in descontos_bancarios])
-        valores = "; ".join([d['Valor'] for d in descontos_bancarios])
+        descontos_organizados = "; ".join([
+            f"{d['Banco']} - Parcela {d['Parcela']}: {d['Valor']}" for d in descontos_bancarios
+        ])
 
         return {
             "Matrícula": matricula,
@@ -174,9 +174,7 @@ class PDFExportador:
             "Total Líquido": total_liquido,
             "Margem Consignável 30%": margem_30,
             "Margem Consignável 70%": margem_70,
-            "Bancos Desconto": bancos,
-            "Parcelas Desconto": parcelas,
-            "Valores Desconto": valores
+            "Descontos Bancários": descontos_organizados
         }
 
     def extrair_total(self, linhas, padrao):
@@ -197,11 +195,11 @@ class PDFExportador:
         descontos = []
         padrao = re.compile(r'\d{1,2}\s+\d{5}\s+([A-Z \-]+)\s+(\d{1,3})\s+([\d.,]+)')
         for linha in linhas:
-            if any(x in linha for x in ["EMPREST", "AMORT", "CONTRIB"]):
+            if any(palavra in linha for palavra in ["EMPREST", "AMORT", "CONTRIB"]):
                 match = padrao.search(linha)
                 if match:
                     banco = match.group(1).strip()
-                    parcela = match.group(2)
+                    parcela = match.group(2).zfill(3)
                     valor = match.group(3)
                     descontos.append({
                         "Banco": banco,
